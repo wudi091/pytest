@@ -184,6 +184,35 @@ def test_doctest_items(pytester: Pytester) -> None:
     result.stdout.fnmatch_lines(["*collected 2 items*"])
 
 
+def test_doctest_items_with_fixtures(pytester: Pytester) -> None:
+    """Doctest items use fixtures but don't have a ``function`` attribute."""
+    pytester.makeconftest(
+        """
+        import pytest
+
+        @pytest.fixture(autouse=True)
+        def auto():
+            return 99
+        """
+    )
+    pytester.maketxtfile(
+        test_doc="""
+        >>> getfixture("auto")
+        99
+    """
+    )
+    result = pytester.runpytest("--fixtures-per-test", "--doctest-glob=*.txt")
+    assert result.ret == 0
+
+    result.stdout.fnmatch_lines(
+        [
+            "*fixtures used by test_doc.txt*",
+            "*(test_doc.txt)*",
+            "auto -- conftest.py:*",
+        ]
+    )
+
+
 def test_multiline_docstring_in_module(pytester: Pytester) -> None:
     p = pytester.makepyfile(
         '''
