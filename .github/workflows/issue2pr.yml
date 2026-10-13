@@ -1,0 +1,47 @@
+name: Issue2PR
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  fix:
+    # 只认仓库所有者自己开的 issue，别人开的不烧额度
+    if: github.event.issue.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # 模型网关在 Tailscale 网络里（100.x 公网不可路由）
+      - name: 加入 tailnet
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          ping: 100.107.22.18
+
+      # 我们的 Action 是 Docker 容器动作，先确认容器里也够得着网关
+      - name: 确认容器里够得着网关
+        run: |
+          code=$(docker run --rm curlimages/curl -s -m 10 -o /dev/null \
+            -w '%{http_code}' http://100.107.22.18:3001/v1/models || true)
+          echo "容器访问网关 -> HTTP ${code:-（空）}"
+          if [ -z "$code" ] || [ "$code" = "000" ]; then
+            echo "::error::容器连不到网关，tailnet 的路由没进 docker 网络"
+            exit 1
+          fi
+
+      - name: 修 issue
+        uses: wudi091/Issue2PR@main
+        with:
+          api_key: ${{ secrets.LOAD_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          base_url: http://100.107.22.18:3001/v1
+          model: deepseek-flash
+          # 真仓库比玩具靶场难：要在 274 个 py 文件里定位、还得把测试环境装起来
+          max_steps: "40"
