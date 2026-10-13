@@ -2487,8 +2487,14 @@ def _show_fixtures_per_test(config: Config, session: Session) -> None:
 
         tw.line()
         tw.sep("-", f"fixtures used by {item.name}")
-        # TODO: Fix this type ignore.
-        tw.sep("-", f"({get_best_relpath(item.function)})")  # type: ignore[attr-defined]
+        # Not all items have a `function` attribute (e.g. `DoctestItem`),
+        # in which case fall back to the item's path.
+        function = getattr(item, "function", None)
+        if function is not None:
+            location = get_best_relpath(function)
+        else:
+            location = bestrelpath(invocation_dir, Path(item.path))
+        tw.sep("-", f"({location})")
 
         for fixturedef in fixturedefs:
             write_fixture(fixturedef)

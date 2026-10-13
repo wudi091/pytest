@@ -1,0 +1,2 @@
+Fixed an internal error when using :option:`--fixtures-per-test` with doctest items
+that use fixtures, which do not have a ``function`` attribute.
