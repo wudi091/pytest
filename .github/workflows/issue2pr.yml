@@ -2,7 +2,7 @@ name: Issue2PR
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
 
 permissions:
   contents: write
@@ -14,7 +14,8 @@ jobs:
     # 只认仓库所有者自己开的 issue，别人开的不烧额度
     if: github.event.issue.user.login == github.repository_owner
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 不限制步数，真正的边界是这个墙钟超时
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -43,5 +44,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           base_url: http://100.107.22.18:3001/v1
           model: deepseek-flash
-          # 真仓库比玩具靶场难：要在 274 个 py 文件里定位、还得把测试环境装起来
-          max_steps: "40"
+          # 不限制步数：模型不再调用工具就算完，跟 dsh/codex 同一套规则。
+          # 给一个远大于 45 分钟能跑完的数，等于没有上限。
+          max_steps: "100000"
